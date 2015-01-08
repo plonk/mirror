@@ -27,9 +27,10 @@ class MediaServer
       threads = threads.select(&:alive?)
       threads << Thread.start(client) do |s|
         begin
+          peeraddr = s.peeraddr # コネクションリセットされると取れなくなるので
           @log.info "thread #{Thread.current} started"
           handle_request(http_request(s))
-          @log.info "done serving #{addr_format(s.peeraddr)}"
+          @log.info "done serving #{addr_format(peeraddr)}"
         rescue
           @log.info "thread #{Thread.current} exiting"
         end
