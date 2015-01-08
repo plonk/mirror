@@ -159,8 +159,17 @@ class MediaServer
     end
   end
 
+  def host_ip
+    IPSocket::getaddress(Socket::gethostname)
+  end
+
   def download_granted?(addr)
-    !@options[:local_only] || addr_format(addr).start_with?('127.')
+    numeric_addr = addr[3]
+    if @options[:local_only]
+      numeric_addr.start_with?('127.') || numeric_addr == host_ip
+    else
+      true
+    end
   end
 
   def handle_subscriber_request(request)
