@@ -31,21 +31,12 @@ class PublishingPoint
     if packet.type == :header
       puts 'header overwritten' if @header
       @header = packet
-    else
-      fail 'failed to receive initial header packet' unless @header
-
-      @subscribers.each do |s|
-        begin
-          s << packet
-        rescue StandardError => e
-          puts "subscriber disconnected #{s}: #{e}"
-          @subscribers.delete(s)
-        end
-      end
-      if packet.type == :end_trans && packet.body == "\x00\x00\x00\x00"
-        close
-      end
     end
+
+    fail 'failed to receive initial header packet' unless @header
+
+    broadcast_packet(packet)
+    close if packet.type == :end_trans && packet.body == "\x00\x00\x00\x00"
     self
   end
   make_safe(:<<)
@@ -62,4 +53,17 @@ class PublishingPoint
     @closed = true
   end
   make_safe :close
+
+  private
+
+  def broadcast_packet(packet)
+    @subscribers.each do |s|
+      begin
+        s << packet
+      rescue => e
+        puts "subscriber disconnected #{s}: #{e}"
+        @subscribers.delete(s)
+      end
+    end
+  end
 end

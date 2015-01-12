@@ -15,7 +15,7 @@ class MediaServer
     @lock = Monitor.new
     @log = log
     @options = options
-    log.info('server is on %s' % addr_format(@socket.addr))
+    log.info format('server is on %s', addr_format(@socket.addr))
   end
 
   def run
@@ -49,7 +49,7 @@ class MediaServer
   private
 
   def addr_format(addr)
-    address_family, port, hostname, numeric_address = addr
+    _address_family, port, _hostname, numeric_address = addr
     "#{numeric_address}:#{port}"
   end
 
@@ -106,11 +106,11 @@ class MediaServer
 
     # わかったふりをする
     headers = {
-      'Server' => 'Cougar/9.01.01.3814',
-      'Cache-Control' => 'no-cache',
-      'Supported' => 'com.microsoft.wm.srvppair, com.microsoft.wm.sswitch, com.microsoft.wm.predstrm, com.microsoft.wm.fastcache, com.microsoft.wm.startupprofile',
+      'Server'         => 'Cougar/9.01.01.3814',
+      'Cache-Control'  => 'no-cache',
+      'Supported'      => 'com.microsoft.wm.srvppair, com.microsoft.wm.sswitch, com.microsoft.wm.predstrm, com.microsoft.wm.fastcache, com.microsoft.wm.startupprofile',
       'Content-Length' => '0',
-      'Connection' => 'Keep-Alive',
+      'Connection'     => 'Keep-Alive',
     }
     s.write "HTTP/1.1 204 No Content\r\n"
     headers.each { |key, val| s.write "#{key}: #{val}\r\n" }
@@ -138,6 +138,7 @@ class MediaServer
       ensure
         publishing_point.close unless publishing_point.closed?
         remove_publishing_point(request.path)
+        s.close
       end
     else
       # なんかエラーを返す
@@ -154,7 +155,7 @@ class MediaServer
       handle_push_start(request)
     else
       # bad request
-      @log.error 'bad request %p' % request.headers['Content-Type']
+      @log.error format('bad request %p', request.headers['Content-Type'])
       request.socket.close
     end
   end
@@ -190,7 +191,8 @@ class MediaServer
 
       publishing_point.add_subscriber ClientConnection.new(s)
     else
-      @log.info "rejected download request from #{addr_format(request.socket.peeraddr)}"
+      endpoint = addr_format(request.socket.peeraddr)
+      @log.info "rejected download request from #{endpoint}"
       s.write "HTTP/1.0 403 Forbidden\r\n"
       s.write "\r\n"
       s.close

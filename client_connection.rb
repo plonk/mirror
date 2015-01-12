@@ -1,5 +1,6 @@
 require_relative 'asf_packet'
 
+# クライアントとの接続
 class ClientConnection
   attr_reader :socket, :seqno
 
@@ -10,9 +11,7 @@ class ClientConnection
   end
 
   def <<(packet)
-    if packet.type == :end_trans
-      @closing = true
-    end
+    @closing = true if packet.type == :end_trans
 
     puts "sending packet #{packet.inspect} with seqno=#{@seqno}" if $DEBUG
     bytestr = packet.to_s(@seqno)
