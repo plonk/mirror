@@ -19,6 +19,7 @@ class AsfPacket
   end
 
   def initialize(type, body)
+    fail 'unknown type %p' % type unless TYPE_SYM.values.include? type
     @type  = type
     @size  = body.bytesize
     @body  = body
