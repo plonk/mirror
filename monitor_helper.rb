@@ -11,7 +11,7 @@ module MonitorHelper
         define_method(method) do |*args, &block|
           # @lock という Monitor オブジェクトの存在を仮定している
           @lock.synchronize do
-            self.send(imp, *args, &block)
+            send(imp, *args, &block)
           end
         end
       end

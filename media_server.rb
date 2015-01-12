@@ -7,7 +7,7 @@ require_relative 'client_connection'
 # mirroring media server
 class MediaServer
   def initialize(log = Logger.new(STDOUT), options = {})
-    host = options[:host] || "0.0.0.0"
+    host = options[:host] || '0.0.0.0'
     port = options[:port] || 4567
     @socket = TCPServer.open(host, port)
     @listeners = []
@@ -15,7 +15,7 @@ class MediaServer
     @lock = Monitor.new
     @log = log
     @options = options
-    log.info("server is on %s" % addr_format(@socket.addr))
+    log.info('server is on %s' % addr_format(@socket.addr))
   end
 
   def run
@@ -41,7 +41,7 @@ class MediaServer
     threads.each { |t| t.kill }
     threads = []
     @log.info 'closing publishing points...'
-    @publishing_points.each_pair do |path, point|
+    @publishing_points.each_pair do |_path, point|
       point.close unless point.closed?
     end
   end
@@ -80,9 +80,9 @@ class MediaServer
 
   def http_request(s)
     if (line = s.gets) =~ /\A([A-Z]+) (\S+) (\S+)\r\n\z/
-      meth = $1
-      path = $2
-      version = $3
+      meth = Regexp.last_match[1]
+      path = Regexp.last_match[2]
+      version = Regexp.last_match[3]
     else
       fail "invalid request line: #{line.inspect}"
     end
@@ -91,7 +91,7 @@ class MediaServer
     headers = {}
     while (line = s.gets) != "\r\n"
       line =~ /\A([^:]+): (.+)\r\n\z/
-      headers[$1] = $2
+      headers[Regexp.last_match[1]] = Regexp.last_match[2]
     end
     OpenStruct.new(meth: meth, path: path, version: version,
                    headers: headers, socket: s)
@@ -154,13 +154,13 @@ class MediaServer
       handle_push_start(request)
     else
       # bad request
-      @log.error "bad request %p" % request.headers['Content-Type']
+      @log.error 'bad request %p' % request.headers['Content-Type']
       request.socket.close
     end
   end
 
   def host_ip
-    IPSocket::getaddress(Socket::gethostname)
+    IPSocket.getaddress(Socket.gethostname)
   end
 
   def download_granted?(addr)
@@ -201,9 +201,9 @@ class MediaServer
 
   def handle_request(request)
     case request.meth
-    when "GET"
+    when 'GET'
       handle_subscriber_request(request)
-    when "POST"
+    when 'POST'
       handle_publisher_request(request)
     else
       fail 'unknown method'

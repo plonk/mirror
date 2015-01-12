@@ -29,7 +29,7 @@ class PublishingPoint
 
   def <<(packet)
     if packet.type == :header
-      puts "header overwritten" if @header
+      puts 'header overwritten' if @header
       @header = packet
     else
       fail 'failed to receive initial header packet' unless @header

@@ -1,10 +1,9 @@
 require 'optparse'
 require 'logger'
-require "socket"
+require 'socket'
 require 'ostruct'
 require_relative 'asf_packet'
 require_relative 'media_server'
-
 
 def parse_options
   options = {}
