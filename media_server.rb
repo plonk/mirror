@@ -90,7 +90,7 @@ class MediaServer
     # read headers
     headers = {}
     while (line = s.gets) != "\r\n"
-      line =~ /\A([^:]+): (.+)\r\n\z/
+      line =~ /\A([^:]+):\s*(.+)\r\n\z/
       headers[Regexp.last_match[1]] = Regexp.last_match[2]
     end
     OpenStruct.new(meth: meth, path: path, version: version,
