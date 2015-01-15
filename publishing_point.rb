@@ -1,3 +1,4 @@
+require_relative 'util'
 require_relative 'monitor_helper'
 
 # パブリッシングポイント
@@ -9,6 +10,16 @@ class PublishingPoint
     @subscribers = []
     @lock = Monitor.new
     @closed = false
+  end
+
+  def inspect
+    if @subscribers.empty?
+      subs = "none"
+    else
+      subs = @subscribers.map { |conn| Util.addr_format(conn.socket.peeraddr) }.join('-')
+    end
+
+    "subscribers: " + subs
   end
 
   def closed?

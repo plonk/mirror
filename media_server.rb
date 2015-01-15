@@ -1,11 +1,15 @@
 require 'logger'
 require 'monitor'
+require 'timeout'
+require_relative 'util'
 require_relative 'monitor_helper'
 require_relative 'publishing_point'
 require_relative 'client_connection'
 
 # mirroring media server
 class MediaServer
+  include Util
+
   def initialize(log = Logger.new(STDOUT), options = {})
     host = options[:host] || '0.0.0.0'
     port = options[:port] || 4567
@@ -47,11 +51,6 @@ class MediaServer
   end
 
   private
-
-  def addr_format(addr)
-    _address_family, port, _hostname, numeric_address = addr
-    "#{numeric_address}:#{port}"
-  end
 
   include MonitorHelper
 
@@ -128,13 +127,15 @@ class MediaServer
       begin
         @log.info "publisher starts streaming to #{publishing_point}"
         until publishing_point.closed?
-          packet = AsfPacket.from_socket(s)
+          packet = Timeout.timeout(60) { AsfPacket.from_socket(s) }
           @log.debug "RECEIVED: #{packet.inspect}"
           publishing_point << packet
         end
         @log.info "publisher finishes streaming to #{publishing_point}"
-      rescue => e # ソケットエラー
-        p e
+      rescue Timeout::Error => e
+        @log.error 'Encoder failed to send data in one minute'
+      rescue => e # ソケットエラー?
+        @log.error e.to_s
       ensure
         publishing_point.close unless publishing_point.closed?
         remove_publishing_point(request.path)
@@ -198,14 +199,39 @@ class MediaServer
       s.close
     end
   rescue => e
-    @log.error "#{e.msg}"
+    @log.error "#{e.message}"
+  end
+
+  SERVER_NAME = "mirror/0.0.1"
+
+  def handle_stats_request(request)
+    s = request.socket
+    s.write "HTTP/1.0 200 OK\r\n"
+    s.write "Server: #{SERVER_NAME}\r\n"
+    s.write "Content-Type: text/plain; charset=UTF-8\r\n"
+    s.write "\r\n"
+    s.write "#{@publishing_points.size} publishing points:\n"
+    @publishing_points.each do |path, pp|
+      s.write "%-10s %p" % [path, pp]
+    end
+    s.write "\n\n"
+    s.close
   end
 
   def handle_request(request)
     case request.meth
     when 'GET'
-      handle_subscriber_request(request)
+      if request.path == "/stats"
+        handle_stats_request(request)
+      else
+        handle_subscriber_request(request)
+      end
     when 'POST'
+      if request.path == "/stats"
+        s = request.socket
+        s.write "HTTP/1.0 400 Bad Request\r\n\r\n"
+        s.close
+      end
       handle_publisher_request(request)
     else
       fail 'unknown method'
