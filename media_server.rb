@@ -56,12 +56,12 @@ class MediaServer
 
   # 既にパブリッシングポイントが存在すれば nil を返す
   def create_publishing_point(path)
-    unless @publishing_points[path]
-      @publishing_points[path] = PublishingPoint.new
+    return nil if @publishing_points[path]
+
+    (@publishing_points[path] = PublishingPoint.new).tap do
       @log.info "publishing point #{path} created"
+      @log.debug "publishing points: #{@publishing_points.inspect}"
     end
-    @log.debug "publishing points: #{@publishing_points.inspect}"
-    @publishing_points[path]
   end
   make_safe :create_publishing_point
 
