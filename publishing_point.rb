@@ -16,7 +16,10 @@ class PublishingPoint
     if @subscribers.empty?
       subs = "none"
     else
-      subs = @subscribers.map { |conn| Util.addr_format(conn.socket.peeraddr) }.join('-')
+      subs = @subscribers.map { |conn|
+        # peeraddr could fail
+        Util.addr_format(conn.socket.peeraddr) rescue "unknown"
+      }.join(', ')
     end
 
     "subscribers: " + subs
