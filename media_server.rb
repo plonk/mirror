@@ -12,7 +12,7 @@ class MediaServer
 
   def initialize(log = Logger.new(STDOUT), options = {})
     host = options[:host] || '0.0.0.0'
-    port = options[:port] || 4567
+    port = options[:port] || 5000
     @socket = TCPServer.open(host, port)
     @listeners = []
     @publishing_points = {}
