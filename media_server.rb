@@ -1,6 +1,7 @@
 require 'logger'
 require 'monitor'
 require 'timeout'
+require 'time' # Time#httpdate のため。
 require_relative 'util'
 require_relative 'monitor_helper'
 require_relative 'publishing_point'
@@ -183,14 +184,49 @@ class MediaServer
     end
   end
 
-  def handle_subscriber_request(request)
+  MMSH_USER_AGENT_DATA = /^(NSPlayer|NSServer|WMCacheProxy)\/(\d+)(\.\d+){1,3}(;\s+via\s+WMCacheProxy)?( \S+\/\S+)*$/
+
+  def mmsh?(request)
+    ua = request.headers['User-Agent']
+    !!(ua && ua =~ MMSH_USER_AGENT_DATA)
+  end
+
+  def handle_get_request(request)
     s = request.socket
 
-    publishing_point = get_publishing_point(request.path)
-    if !publishing_point
-      s.write "HTTP/1.0 404 Not Found\r\n\r\n"
-      s.close
-    elsif download_granted?(request.socket.peeraddr)
+    if mmsh?(request)
+      handle_mmsh_request(request)
+    else
+      publishing_point = get_publishing_point(request.path)
+      if !publishing_point
+        s.write "HTTP/1.0 404 Not Found\r\n\r\n"
+        s.close
+        return
+      elsif download_granted?(request.socket.peeraddr)
+        s.write "HTTP/1.0 200 OK\r\n"
+        s.write "Server: #{SERVER_NAME}\r\n"
+        s.write "Cache-Control: no-cache\r\n"
+        s.write "Pragma: no-cache\r\n"
+        s.write "Pragma: features=\"broadcast,playlist\"\r\n"
+        s.write "Content-Type: application/x-mms-framed\r\n"
+        s.write "\r\n"
+
+        publishing_point.add_subscriber ClientConnection.new(s)
+    end
+    end
+  end
+
+  def mmsh_request_type(request)
+    if request.headers['Pragma'] =~ /xPlayStrm/
+      :play
+    else
+      :describe
+    end
+  end
+
+  def handle_play_request(request, publishing_point)
+    s = request.socket
+    if download_granted?(request.socket.peeraddr)
       s.write "HTTP/1.0 200 OK\r\n"
       s.write "Server: Rex/9.0.2980\r\n"
       s.write "Cache-Control: no-cache\r\n"
@@ -207,8 +243,47 @@ class MediaServer
       s.write "\r\n"
       s.close
     end
-  rescue => e
-    @log.error "#{e.message}"
+  end
+
+  def handle_describe_request(request, publishing_point)
+    s = request.socket
+
+    if publishing_point.ready?
+      h, = publishing_point.headers
+      body = h.to_s(0)
+
+      s.write "HTTP/1.1 200 OK\r\n"
+      s.write "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n"
+      s.write "Server: Cougar/9.5.6001.18281\r\n"
+      s.write "Content-Length: #{body.bytesize}\r\n"
+      s.write "Date: #{Time.now.httpdate}\r\n"
+      s.write "Cache-Control: no-cache\r\n"
+      s.write "Supported: com.microsoft.wm.srvppair, com.microsoft.wm.sswitch, com.microsoft.wm.predstrm, com.microsoft.wm.fastcache, com.microsoft.wm.startupprofile\r\n"
+      s.write "\r\n"
+      s.write body
+      s.close
+    else
+      s.write "HTTP/1.1 503 Service Unavailable\r\n\r\n"
+      s.write "\r\n"
+      s.close
+    end
+  end
+
+  def handle_mmsh_request(request)
+    s = request.socket
+    publishing_point = get_publishing_point(request.path)
+    if !publishing_point
+      s.write "HTTP/1.0 404 Not Found\r\n\r\n"
+      s.close
+      return
+    end
+
+    case mmsh_request_type(request)
+    when :play
+      handle_play_request(request, publishing_point)
+    when :describe
+      handle_describe_request(request, publishing_point)
+    end
   end
 
   SERVER_NAME = "mirror/0.0.1"
@@ -228,12 +303,13 @@ class MediaServer
   end
 
   def handle_request(request)
+    @log.debug request.inspect
     case request.meth
     when 'GET'
       if request.path == "/stats"
         handle_stats_request(request)
       else
-        handle_subscriber_request(request)
+        handle_get_request(request)
       end
     when 'POST'
       if request.path == "/stats"
