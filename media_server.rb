@@ -92,7 +92,11 @@ class MediaServer
     headers = {}
     while (line = s.gets) != "\r\n"
       if line =~ /\A([^:]+):\s*(.+)\r\n\z/
-        headers[$1] = $2
+        if headers[$1]
+          headers[$1] += ", #{$2}"
+        else
+          headers[$1] = $2
+        end
       else
         fail "invalid header line: #{line.inspect}"
       end
