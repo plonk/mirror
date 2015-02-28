@@ -35,7 +35,9 @@ class MediaServer
           @log.info "thread #{Thread.current} started"
           handle_request(http_request(s))
           @log.info "done serving #{addr_format(peeraddr)}"
-        rescue
+        rescue => e
+          @log.error "#{e.message}"
+        ensure
           @log.info "thread #{Thread.current} exiting"
         end
       end
