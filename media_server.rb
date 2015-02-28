@@ -221,9 +221,9 @@ class MediaServer
     s.write "\r\n"
     s.write "#{@publishing_points.size} publishing points:\n"
     @publishing_points.each do |path, pp|
-      s.write "%-10s %p" % [path, pp]
+      s.write "%-10s %p\n" % [path, pp]
     end
-    s.write "\n\n"
+    s.write "\n"
     s.close
   end
 
