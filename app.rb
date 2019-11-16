@@ -25,6 +25,8 @@ def parse_options
   options
 end
 
+Process.setproctitle("mirror")
+
 options = parse_options
 
 if $DEBUG
