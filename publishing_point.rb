@@ -34,6 +34,11 @@ class PublishingPoint
   end
   make_safe :ready?
 
+  def headers
+    [@header]
+  end
+  make_safe :headers
+
   def add_subscriber(subscriber)
     fail 'not ready' unless ready?
     subscriber << @header

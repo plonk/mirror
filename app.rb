@@ -6,8 +6,19 @@ require_relative 'asf_packet'
 require_relative 'media_server'
 
 def parse_options
-  options = {}
+  options = {log_level: 'INFO'}
   OptionParser.new do |opt|
+    opt.on('--console', 'コンソールにログを表示する') do |v|
+      options[:console] = v
+    end
+    opt.on("--log-level [#{Logger::SEV_LABEL.join('|')}]", 'ログレベル') do |v|
+      w = v.upcase
+      if Logger::SEV_LABEL.include?(w)
+        options[:log_level] = w
+      else
+        fail 'unknown log level'
+      end
+    end
     opt.on('-d', 'デバッグ') do |v|
       $DEBUG = v
     end
@@ -28,13 +39,7 @@ end
 Process.setproctitle("mirror")
 
 options = parse_options
-
-if $DEBUG
-  log = Logger.new(STDOUT)
-  log.level = Logger::DEBUG
-else
-  log = Logger.new('mirror.log', 'daily')
-  log.level = Logger::INFO
-end
+log = options[:console] ? Logger.new(STDOUT) : Logger.new('mirror.log', 'daily')
+log.level = Logger.const_get(options[:log_level])
 
 MediaServer.new(log, options).run

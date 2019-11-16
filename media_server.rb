@@ -35,7 +35,9 @@ class MediaServer
           @log.info "thread #{Thread.current} started"
           handle_request(http_request(s))
           @log.info "done serving #{addr_format(peeraddr)}"
-        rescue
+        rescue => e
+          @log.error "#{e.message}"
+        ensure
           @log.info "thread #{Thread.current} exiting"
         end
       end
@@ -90,7 +92,11 @@ class MediaServer
     headers = {}
     while (line = s.gets) != "\r\n"
       if line =~ /\A([^:]+):\s*(.+)\r\n\z/
-        headers[$1] = $2
+        if headers[$1]
+          headers[$1] += ", #{$2}"
+        else
+          headers[$1] = $2
+        end
       else
         fail "invalid header line: #{line.inspect}"
       end
@@ -215,9 +221,9 @@ class MediaServer
     s.write "\r\n"
     s.write "#{@publishing_points.size} publishing points:\n"
     @publishing_points.each do |path, pp|
-      s.write "%-10s %p" % [path, pp]
+      s.write "%-10s %p\n" % [path, pp]
     end
-    s.write "\n\n"
+    s.write "\n"
     s.close
   end
 
